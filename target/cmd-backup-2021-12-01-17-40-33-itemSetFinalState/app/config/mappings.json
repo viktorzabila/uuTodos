@@ -1,0 +1,66 @@
+{
+  "{vendor}-{uuApp}-{uuSubApp}": {
+    "useCaseMap": {
+      "sys/uuAppWorkspace/init": {
+        "realization": "api/controllers/TodosMainController.init",
+        "httpMethod": "POST",
+        "type": "CMD"
+      },
+      "defaultUve": {
+        "realization": "index.html",
+        "httpMethod": "GET",
+        "type": "UVE"
+      },
+      "sys/uuAppWorkspace/initUve": {
+        "realization": "index.html",
+        "httpMethod": "GET",
+        "type": "UVE"
+      },
+      "list/create": {
+        "realization": "api/controllers/ListController.create",
+        "httpMethod": "POST",
+        "type": "CMD"
+      },
+      "list/get": {
+        "realization": "api/controllers/ListController.get",
+        "httpMethod": "GET",
+        "type": "CMD"
+      },
+      "list/update": {
+        "realization": "api/controllers/ListController.update",
+        "httpMethod": "POST",
+        "type": "CMD"
+      },
+      "list/delete": {
+        "realization": "api/controllers/ListController.delete",
+        "httpMethod": "POST",
+        "type": "CMD"
+      },
+      "item/create": {
+        "realization": "api/controllers/ItemController.create",
+        "httpMethod": "POST",
+        "type": "CMD"
+      },
+      "item/get": {
+        "realization": "api/controllers/ItemController.get",
+        "httpMethod": "GET",
+        "type": "CMD"
+      },
+      "item/update": {
+        "realization": "api/controllers/ItemController.update",
+        "httpMethod": "POST",
+        "type": "CMD"
+      },
+      "item/list": {
+        "realization": "api/controllers/ItemController.list",
+        "httpMethod": "GET",
+        "type": "CMD"
+      },
+      "list/list": {
+        "realization": "api/controllers/ListController.list",
+        "httpMethod": "GET",
+        "type": "CMD"
+      }
+    }
+  }
+}
