@@ -94,7 +94,7 @@ class ListAbl {
       dtoIn,
       validationResult,
       WARNINGS.deleteUnsupportedKeys.code,
-      Errors.Delete.InvalidDtoIn
+      Errors.Delete.invalidDtoIn
     );
 
     if (!dtoIn.forceDelete) {
@@ -120,22 +120,20 @@ class ListAbl {
 
     let uuObject = await this.listDao.get(awid, dtoIn.id);
     if (!uuObject) {
-      throw new Errors.Delete.ListDoesNotExist({ uuAppErrorMap }, { id: dtoIn.id });
+      throw new Errors.Delete.listDoesNotExist({ uuAppErrorMap }, { id: dtoIn.id });
     }
 
     // HDS 4 System loads all active items related to the list (using item DAO listByListAndState, where listId = dtoIn.id and state = active) and verifies that count of active items in the list is 0.
     let filterMap = { awid, listId: dtoIn.id, state: "active" };
     let uuItems = await this.itemDao.listByListIdAndState(filterMap);
-    console.log(uuItems);
     let itemLength = uuItems.itemList.length;
-
-    // HDS 5 System deletes all item uuObjects in the list from uuAppObjectStore (using item DAO deleteManyByListId with awid and dtoIn.id).
-
     if (dtoIn.forceDelete === false && itemLength) {
-      throw new Errors.Delete.ListContainsActiveItems({ uuAppErrorMap }, { id: dtoIn.id, itemList: uuItems.itemList });
+      throw new Errors.Delete.listContainsActiveItems({ uuAppErrorMap }, { id: dtoIn.id, itemList: uuItems.itemList });
     } else {
       await this.itemDao.deleteManyByList(awid, dtoIn.id);
     }
+
+    // HDS 5 System deletes all item uuObjects in the list from uuAppObjectStore (using item DAO deleteManyByListId with awid and dtoIn.id).
 
     // HDS 6 System deletes list from the uuAppObjectStore (using list DAO delete with awid and dtoIn.id).
 

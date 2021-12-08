@@ -45,7 +45,7 @@ class ListMongo extends UuObjectDao {
       awid: uuItems.awid,
       id: uuItems.id,
     };
-    return await super.find(filter);
+    return await super.deleteOne(filter);
   }
 
   async deleteManyByList(awid, listId) {

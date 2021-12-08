@@ -85,7 +85,6 @@ class ItemAbl {
 
   async setFinalState(uri, dtoIn, uuAppErrorMap = {}) {
     const awid = uri.getAwid();
-    const ToDoInstance = await this.mainDao.getByAwid(awid);
     // HDS 1 - Validation of dtoIn.
 
     const validationResult = this.validator.validate("itemSetFinalStateDtoInType", dtoIn);
@@ -93,41 +92,47 @@ class ItemAbl {
       dtoIn,
       validationResult,
       WARNINGS.setFinalStateUnsupportedKeys.code,
-      Errors.SetFinalState.InvalidDtoIn
+      Errors.SetFinalState.invalidDtoIn
     );
 
-    // HDS 2 - check existence and state of the todoInstance uuObject
-    if (!ToDoInstance) {
-      throw new Errors.SetFinalState.TodoInstanceDoesNotExist({ uuAppErrorMap }, { awid });
+    // HDS 2 - existence main dao
+
+    const todoInstance = await this.mainDao.getByAwid(awid);
+
+    if (!todoInstance) {
+      throw new Errors.SetFinalState.todoInstanceDoesNotExist({ uuAppErrorMap }, { awid: awid });
     }
 
-    if (ToDoInstance.state !== "active") {
-      throw new Errors.SetFinalState.TodoInstanceIsNotInProperState({ uuAppErrorMap }, { awid });
+    if (todoInstance.state !== "active") {
+      throw new Errors.SetFinalState.todoInstanceIsNotInProperState(
+        { uuAppErrorMap },
+        { awid: awid, currentState: todoInstance.state, expectedState: "active" }
+      );
     }
 
-    // HDS 3 - System verifies, that the item entered in dtoIn.id exists
+    // HDS 3
 
     let item = await this.itemDao.get(awid, dtoIn.id);
 
     if (!item) {
-      throw new Errors.SetFinalState.ItemDoesNotExist({ uuAppErrorMap }, { id: dtoIn.id });
+      throw Errors.SetFinalState.itemDoesNotExist({ uuAppErrorMap }, { id: dtoIn.id });
     }
 
     if (item.state !== "active") {
-      throw new Errors.SetFinalState.ItemIsNotInProperState(
+      throw Errors.SetFinalState.itemIsNotInProperState(
         { uuAppErrorMap },
-        { id: dtoIn.id, currentState: item.state }
+        { id: dtoIn.id, currentState: item.state, expectedState: active }
       );
     }
 
-    // HDS 4 - System saves dtoIn to uuAppObjectStore (using item DAO setFinalState with awid and dtoIn). The result is saved to item.
-    let uuObject = { ...dtoIn, awid };
-    let itemObject = await this.itemDao.setFinalState({ awid, id: dtoIn.id }, uuObject);
+    // HDS 4
 
-    // HDS 5 - returns properly filled dtoOut
+    let uuObject = { ...dtoIn, awid };
+    item = await this.itemDao.setFinalState(uuObject);
+
     return {
+      ...item,
       uuAppErrorMap,
-      ...itemObject,
     };
   }
 
@@ -185,58 +190,72 @@ class ItemAbl {
     };
   }
 
-  async update(uri, dtoIn, session, uuAppErrorMap = {}) {
+  async update(uri, dtoIn, uuAppErrorMap = {}) {
     const awid = uri.getAwid();
-    const ToDoInstance = await this.mainDao.getByAwid(awid);
     // HDS 1 - Validation of dtoIn.
 
     const validationResult = this.validator.validate("itemUpdateDtoInType", dtoIn);
     uuAppErrorMap = ValidationHelper.processValidationResult(
       dtoIn,
       validationResult,
-      WARNINGS.createUnsupportedKeys.code,
-      Errors.Update.InvalidDtoIn
+      WARNINGS.updateUnsupportedKeys.code,
+      Errors.Update.invalidDtoIn
     );
 
-    // HDS 2 - check existence and state of the todoInstance uuObject
-    if (!ToDoInstance) {
-      throw new Errors.Update.TodoInstanceDoesNotExist({ uuAppErrorMap }, { awid });
+    // HDS 2 - System checks the existence and state of the todoInstance uuObject.
+
+    const todoInstance = await this.mainDao.getByAwid(awid);
+
+    if (!todoInstance) {
+      throw new Errors.Update.todoInstanceDoesNotExist({ uuAppErrorMap }, { awid: awid });
     }
 
-    if (ToDoInstance.state !== "active") {
-      throw new Errors.Update.TodoInstanceIsNotInProperState({ uuAppErrorMap }, { expectedState: "active", awid });
+    if (todoInstance.state !== "active") {
+      throw new Errors.Update.todoInstanceIsNotInProperState(
+        { uuAppErrorMap },
+        { awid: awid, currentState: todoInstance.state, expectedState: "active" }
+      );
     }
 
-    // HDS 3 - item has to be active in order to be updated
-    let itemObject = { ...dtoIn, awid };
-
-    // HDS 4 - System verifies, that the list entered in dtoIn.listId exists
+    // HDS 3 Verifies, that the item exists and is in an active state (using item DAO get with awid and dtoIn.id). The result is saved as "item".
 
     let item = await this.itemDao.get(awid, dtoIn.id);
 
     if (!item) {
-      throw new Errors.Update.ItemDoesNotExist({ uuAppErrorMap }, { id: dtoIn.id });
+      throw Errors.Update.itemDoesNotExist({ uuAppErrorMap }, { id: dtoIn.id });
     }
 
     if (item.state !== "active") {
-      throw new Errors.Update.ItemIsNotInCorrectState(
+      throw Errors.Update.itemIsNotInCorrectState(
         { uuAppErrorMap },
-        { id: dtoIn.id, currentState: item.state, expectedState: "active" }
+        { id: dtoIn.id, currentState: item.state, expectedState: active }
       );
     }
 
-    // HDS 5 - system updates uuObject item in the uuAppObjectStore
-    let uuObjectItem = null;
-    try {
-      uuObjectItem = await this.itemDao.update({ awid, id: dtoIn.id }, itemObject);
-    } catch (e) {
-      throw new Errors.Update.ItemDaoCreateFailed({ uuAppErrorMap }, e);
+    // HDS 4 - System verifies, that the list entered in dtoIn.listId exists (using list DAO get with awid and dtoIn.listId).
+
+    const uuObject = { ...dtoIn, awid };
+
+    if (dtoIn.listId) {
+      const list = await this.listDao.get(awid, dtoIn.listId);
+
+      if (!list) {
+        throw new Errors.Update.listDoesNotExist({ uuAppErrorMap }, { id: uuObject.listId });
+      }
     }
 
-    // HDS 6 - returns properly filled dtoOut
+    // HDS 5 - System updates uuObject item in the uuAppObjectStore
+
+    try {
+      item = await this.itemDao.update(uuObject);
+    } catch (err) {
+      throw new Errors.Update.itemDaoUpdateFailed({ uuAppErrorMap }, err);
+    }
+
+    // HDS 5 - return
     return {
+      ...item,
       uuAppErrorMap,
-      ...uuObjectItem,
     };
   }
 
