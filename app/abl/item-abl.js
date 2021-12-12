@@ -175,6 +175,7 @@ class ItemAbl {
     // HDS 3 System loads from uuAppObjectStore basic attributes of all uuObject items by keys given in dtoIn, and saves them to dtoOut.itemList.
 
     let uuObject = { ...dtoIn, awid };
+    console.log("uuObject", uuObject);
     if (uuObject.listId && uuObject.state) {
       uuObject = await this.itemDao.listByListIdAndState(uuObject);
     } else if (uuObject.state) {
